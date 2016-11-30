@@ -44,7 +44,7 @@ class Handler(BaseHandler):
         )
 
     def get_head_ads_content(self, response):
-        href = [i.attr.href for i in response.doc('.absolute.a_cover a').items()]
+        href = [i.attr.href for i in response.doc('.absolute.a_cover').items()]
 
         for i in self.ad_url[1:]:
             self.crawl(
@@ -60,7 +60,7 @@ class Handler(BaseHandler):
         }
 
     def get_sub_ads_content(self, response):
-        href = [i.attr.href for i in response.doc('.absolute.a_cover a').items()]
+        href = [i.attr.href for i in response.doc('.absolute.a_cover').items()]
         return {
             'content': href,
             'url': response.url
