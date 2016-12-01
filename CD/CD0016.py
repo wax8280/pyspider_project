@@ -79,7 +79,9 @@ class Handler(BaseHandler):
             a1.extend(a2)
 
         elif response.save.get('type') == 1:
-            a1 = [_.attr.href for _ in response.doc('').items()]
+            a1 = [i.attr.href for _ in response.doc('div').items() if
+                  _.attr.style == u'width:1160px;height:110px;border:none;padding:0px;margin:0px;overflow:hidden;position:relative;'
+                  for i in _('a').items()]
             a2 = [_.attr.href for _ in response.doc('.adsame-banner-box a').items()]
 
             print a1
