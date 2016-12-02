@@ -17,7 +17,7 @@ class Handler(BaseHandler):
         'Accept-Language': 'zh-CN,zh;q=0.8',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
-        'Referer': 'http://www.fx168.com/',
+        'Referer': 'http://www.hexun.com/',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
     }
     crawl_config = {
