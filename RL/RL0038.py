@@ -4,6 +4,8 @@
 from pyspider.libs.base_handler import *
 from copy import deepcopy
 import re
+import json
+import time
 
 BEGIN = 0
 DIVIDE = 2
@@ -29,14 +31,32 @@ class Handler(BaseHandler):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36'
     }
 
+    post_headers = {
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.8',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
+    }
+
     crawl_config = {
         'itag': 'v1',
         'headers': default_headers,
         'retries': 3,
     }
 
-    url = u'http://www.jobui.com/cmp?keyword={}'
+    search_url = u'https://www.lagou.com/jobs/list_{}?labelWords=&fromSearch=true&suginput='
     api_url = u'http://112.74.93.18:10265/api/names/zhaopin?start={}&end={}'
+
+    job_url = u'https://www.lagou.com/jobs/{}.html'
+
+    post_url = u'https://www.lagou.com/gongsi/searchPosition.json'
+
+    def get_taskid(self, task):
+        return md5string(task['url'] + json.dumps(task['fetch'].get('data', '')) + str(time.time()))
 
     def on_start(self):
         self.crawl(self.api_url.format(BEGIN, BEGIN + DIVIDE),
@@ -59,16 +79,17 @@ class Handler(BaseHandler):
 
         for name in names:
             if len(name.strip()):
-                self.crawl(self.url.format(name.strip()),
+                self.crawl(self.search_url.format(name.strip()),
                            callback=self.get_list,
+                           headers=self.default_headers,
+                           validate_cert=False,
                            proxy='localhost:3128',
-                           save={'company_name': name.strip(), 'p': 1}
                            )
 
     @config(priority=2)
     def get_list(self, response):
 
-        for i in response.doc('.atn-li .atn-content h2 a').items():
+        for i in response.doc('.company-card h2 a').items():
             if i.attr.href:
                 new_headers = deepcopy(self.default_headers)
                 new_headers.update({'Referer': response.url})
@@ -77,20 +98,27 @@ class Handler(BaseHandler):
                     i.attr.href,
                     callback=self.get_comnapy,
                     headers=new_headers,
+                    validate_cert=False,
                     proxy='localhost:3128',
                 )
 
     @config(priority=3)
     def get_comnapy(self, response):
-        new_headers = deepcopy(self.default_headers)
+        new_headers = deepcopy(self.post_headers)
         new_headers.update({'Referer': response.url})
+        companyid = re.search(u'(\d+)', response.url).groups()[0]
+
+        data = {'companyId': companyid, 'positionFirstType': u'全部', 'pageNo': 1, 'pageSize': 10}
 
         self.crawl(
-            response.url + u'jobs/p1/',
+            self.post_url,
+            method='POST',
+            data=data,
             callback=self.get_position,
             headers=new_headers,
+            validate_cert=False,
             proxy='localhost:3128',
-            save={'p': 1}
+            save={'p': 1, 'companyId': companyid, 'headers': new_headers}
         )
 
         return {
@@ -100,27 +128,32 @@ class Handler(BaseHandler):
 
     @config(priority=4)
     def get_position(self, response):
-        if u'该公司暂无招聘职位' not in response.text:
+        result = response.json
 
-            new_headers = deepcopy(self.default_headers)
-            new_headers.update({'Referer': response.url})
-
-            for i in response.doc('.col-title410 a').items():
-                self.crawl(
-                    i.attr.href,
-                    callback=self.get_content,
-                    headers=new_headers,
-                    proxy='localhost:3128',
-                )
-
-            url = re.sub(u'p\d+', u'p' + unicode(response.save.get('p') + 1), response.url)
+        the_result = result['content']['data']['page']['result']
+        if not len(the_result) < 10:
+            data = {'companyId': response.save.get('companyId'), 'positionFirstType': u'全部',
+                    'pageNo': response.save.get('p') + 1, 'pageSize': 10}
 
             self.crawl(
-                url,
+                self.post_url,
+                method='POST',
+                data=data,
                 callback=self.get_position,
-                headers=new_headers,
+                headers=response.save.get('headers'),
+                validate_cert=False,
                 proxy='localhost:3128',
-                save={'p': response.save.get('p') + 1}
+                save={'p': response.save.get('p') + 1, 'companyId': response.save.get('companyId'),
+                      'headers': response.save.get('headers')}
+            )
+
+        for each in the_result:
+            self.crawl(
+                self.job_url.format(each['positionId']),
+                headers=response.save.get('headers'),
+                callback=self.get_content,
+                validate_cert=False,
+                proxy='localhost:3128',
             )
 
     @config(priority=5)
@@ -129,4 +162,3 @@ class Handler(BaseHandler):
             'content': response.text,
             'url': response.url
         }
-

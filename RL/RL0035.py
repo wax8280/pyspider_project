@@ -66,6 +66,7 @@ class Handler(BaseHandler):
 
                 self.crawl(self.url + data,
                            callback=self.get_list,
+                           proxy='localhost:3128',
                            save={'first': True, 'company_name': name.strip(), 'rn': 0}
                            )
 
@@ -86,6 +87,7 @@ class Handler(BaseHandler):
 
             self.crawl(self.url + data,
                        callback=self.get_list,
+                       proxy='localhost:3128',
                        save={'first': True, 'company_name': response.save.get('company_name'),
                              'rn': int(response.save.get('rn')) + 30}
                        )
@@ -93,9 +95,11 @@ class Handler(BaseHandler):
         for each in result['data']['data']['disp_data']:
             self.crawl(
                 each['url'],
+                proxy='localhost:3128',
                 callback=self.get_content,
             )
 
+    @config(priority=3)
     def get_content(self, response):
         return {
             'content': response.text,
