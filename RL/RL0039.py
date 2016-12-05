@@ -95,18 +95,17 @@ class Handler(BaseHandler):
         }
 
     def get_position(self, response):
-        new_headers = deepcopy(self.default_headers)
-        new_headers.update({'Referer': response.url})
-
-        for i in response.doc('.col-title410 a').items():
-            self.crawl(
-                i.attr.href,
-                callback=self.get_content,
-                headers=new_headers,
-            )
-
-
         if u'该公司暂无招聘职位' not in response.text:
+
+            new_headers = deepcopy(self.default_headers)
+            new_headers.update({'Referer': response.url})
+
+            for i in response.doc('.col-title410 a').items():
+                self.crawl(
+                    i.attr.href,
+                    callback=self.get_content,
+                    headers=new_headers,
+                )
 
             url = re.sub(u'p\d+', u'p' + unicode(response.save.get('p') + 1), response.url)
 
