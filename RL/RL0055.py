@@ -6,9 +6,11 @@
 from pyspider.libs.base_handler import *
 from copy import deepcopy
 import re
+import json
+import time
 
-BEGIN = 1
-DIVIDE = 5
+BEGIN = 4163642
+DIVIDE = 10
 TRY_TIME = 10
 
 
@@ -23,11 +25,14 @@ class Handler(BaseHandler):
     }
 
     crawl_config = {
-        'itag': 'v1',
+        'itag': 'v2',
         'headers': default_headers,
         'retries': 10,
     }
     url = 'http://jobs.51job.com/all/co{}.html'
+
+    def get_taskid(self, task):
+        return md5string(task['url'] + json.dumps(task['fetch'].get('data', '')) + str(time.time()))
 
     def on_start(self):
         self.crawl(
@@ -39,6 +44,7 @@ class Handler(BaseHandler):
             callback=self.list_page,
             force_update=True,
             headers=self.default_headers,
+            proxy='localhost:3128',
         )
 
     @catch_status_code_error
@@ -46,10 +52,10 @@ class Handler(BaseHandler):
 
         if response.status_code == 200 and u'tCompany_full' in response.text:
 
-            if response.save['now'] >= 4163642:
+            if response.save['now'] <= 1:
                 return
 
-            for i in range(response.save['now'] + 1, response.save['now'] + DIVIDE):
+            for i in range(response.save['now'], max(response.save['now'] - DIVIDE, 1), -1):
                 self.crawl(
                     self.url.format(i),
                     save={
@@ -58,6 +64,7 @@ class Handler(BaseHandler):
                     },
                     callback=self.list_page,
                     headers=self.default_headers,
+                    proxy='localhost:3128',
                 )
 
             hidTotal = re.search('<input type="hidden" id="hidTotal" name="hidTotal" value="(.*?)">', response.text)
@@ -81,6 +88,7 @@ class Handler(BaseHandler):
                     data={'hidTotal': hidTotal, 'pageno': now},
                     callback=self.get_list,
                     headers=new_headers,
+                    proxy='localhost:3128',
                 )
 
             return {
@@ -97,13 +105,14 @@ class Handler(BaseHandler):
                 },
                 callback=self.list_page,
                 headers=self.default_headers,
+                proxy='localhost:3128',
             )
 
     @config(priority=2)
     @catch_status_code_error
     def get_list(self, response):
 
-        if response.status_code == 200 and u'd' in response.text:
+        if response.status_code == 200 and u'class="el"' in response.text:
             now = response.save['now']
             hidTotal = response.save['hidTotal']
             Referer = response.save['Referer']
@@ -115,6 +124,13 @@ class Handler(BaseHandler):
                     i.attr.href,
                     callback=self.get_content,
                     headers=new_headers,
+                    proxy='localhost:3128',
+                    save={
+                        'hidTotal': hidTotal,
+                        'now': now,
+                        'Referer': Referer,
+                        'try_time': 0,
+                    }
                 )
 
             if now * 20 < int(hidTotal):
@@ -132,6 +148,7 @@ class Handler(BaseHandler):
                     data={'hidTotal': hidTotal, 'pageno': now},
                     callback=self.get_list,
                     headers=new_headers,
+                    proxy='localhost:3128',
                 )
 
         elif response.save['try_time'] < TRY_TIME:
@@ -153,12 +170,13 @@ class Handler(BaseHandler):
                 data={'hidTotal': hidTotal, 'pageno': now},
                 callback=self.get_list,
                 headers=new_headers,
+                proxy='localhost:3128',
             )
 
     @config(priority=3)
     @catch_status_code_error
     def get_content(self, response):
-        if response.status_code == 200 and u'd' in response.text:
+        if response.status_code == 200 and u'tCompany_center' in response.text:
 
             return {
                 'content': response.text,
@@ -183,6 +201,7 @@ class Handler(BaseHandler):
                 },
                 method='POST',
                 data={'hidTotal': hidTotal, 'pageno': now},
-                callback=self.get_list,
+                callback=self.get_content,
                 headers=new_headers,
+                proxy='localhost:3128',
             )
