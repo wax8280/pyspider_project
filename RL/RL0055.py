@@ -7,7 +7,6 @@ from pyspider.libs.base_handler import *
 from copy import deepcopy
 import re
 import json
-import time
 
 BEGIN = 4163642
 DIVIDE = 10
@@ -32,7 +31,7 @@ class Handler(BaseHandler):
     url = 'http://jobs.51job.com/all/co{}.html'
 
     def get_taskid(self, task):
-        return md5string(task['url'] + json.dumps(task['fetch'].get('data', '')) + str(time.time()))
+        return md5string(task['url'] + json.dumps(task['fetch'].get('data', '')) )
 
     def on_start(self):
         self.crawl(
