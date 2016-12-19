@@ -1,5 +1,8 @@
-# !/usr/bin/env python
-# coding: utf-8
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+# Created on 2016-12-19 15:36:51
+# Project: RL0056
+
 
 from pyspider.libs.base_handler import *
 from copy import deepcopy
@@ -25,8 +28,14 @@ class Handler(BaseHandler):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36'
     }
 
-    api_url = 'http://120.77.12.100:10265/api/common/RL0056?start={}&end={}'
-    search_url = 'https://www.so.com/s'
+    api_url = 'http://10.26.225.178:10265/api/common/RL0056?start={}&end={}'
+    search_url = 'http://www.so.com/s'
+    crawl_config = {
+        'itag': 'v2',
+        'headers': default_headers,
+        'retries': 5,
+
+    }
 
     def on_start(self):
         self.crawl(self.api_url.format(BEGIN, BEGIN + DIVIDE),
@@ -77,7 +86,7 @@ class Handler(BaseHandler):
         # 翻页
         for page in response.doc('#page a').items():
             self.crawl(
-                page.attr.href,
+                page.attr.href.replace('https', 'http'),
                 callback=self.get_list,
                 validate_cert=False,
                 headers=new_headers,
@@ -86,7 +95,7 @@ class Handler(BaseHandler):
 
         for a in response.doc('a.m').items():
             self.crawl(
-                a.attr.href,
+                a.attr.href.replace('https', 'http'),
                 callback=self.get_link,
                 validate_cert=False,
                 headers=new_headers,
@@ -103,12 +112,17 @@ class Handler(BaseHandler):
             })
 
             self.crawl(
-                link_gen.group(1),
+                link_gen.group(1).replace('https', 'http'),
                 callback=self.get_content,
                 headers=new_headers,
                 validate_cert=False,
                 proxy='localhost:3128',
             )
+        else:
+            return {
+                'content': response.text,
+                'url': response.url,
+            }
 
     @config(priority=5)
     def get_content(self, response):

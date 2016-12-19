@@ -56,7 +56,7 @@ class Handler(BaseHandler):
                 callback=self.get_list,
                 validate_cert=False,
                 headers=self.default_headers,
-                # proxy='localhost:3128',
+                proxy='localhost:3128',
             )
 
         if '' in product_list and len(product_list) <= 1:
@@ -87,18 +87,18 @@ class Handler(BaseHandler):
                     callback=self.get_content,
                     validate_cert=False,
                     headers=new_headers,
-                    # proxy='localhost:3128',
+                    proxy='localhost:3128',
                 )
 
             if a.attr.id and u'sogou_page' in a.attr.id:
                 # 限制最大翻页数
-                if int(re.search('sogou_page_(\d+)', a.attr.id).group(1)) < MAX_PAGECOUNT:
+                if int(re.search('sogou_page_(\d+)', a.attr.id).group(1)) <= MAX_PAGECOUNT:
                     self.crawl(
                         a.attr.href,
                         callback=self.get_list,
                         validate_cert=False,
                         headers=new_headers,
-                        # proxy='localhost:3128',
+                        proxy='localhost:3128',
                     )
 
     @config(priority=5)
