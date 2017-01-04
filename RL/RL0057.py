@@ -29,7 +29,7 @@ class Handler(BaseHandler):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36'
     }
 
-    api_url = 'http://10.26.225.178:10265/common/RL0057?start={}&end={}'
+    api_url = 'http://10.26.225.178:10265/api/common/RL0057?start={}&end={}'
     # api_url = 'http://120.77.12.100:10265/api/common/RL0057?start={}&end={}'
     search_url = 'http://www.sogou.com/web'
 
