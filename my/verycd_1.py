@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-# Created on 2017-01-09 17:49:25
-# Project: verycd
+# Created on 2017-01-10 09:37:19
+# Project: verycd_1
+
 
 from pyspider.libs.base_handler import *
 import re
-import subprocess
 import time
 
-DIVIDE = 100
-URL_PATH = './occident'
-RESULT_PATH = './result/verycd/occident_result/'
+RESULT_PATH = './result/verycd/china_result/'
 
 
 class Handler(BaseHandler):
@@ -19,23 +17,7 @@ class Handler(BaseHandler):
         1: 1,
         2: 1,
         3: 1,
-        4: 1,
-        5: 1,
-        6: 1,
-        7: 1,
-        8: 1,
-        9: 1,
-        10: 1,
-        11: 1,
-        12: 2,
-        13: 8,
-        14: 16,
-        15: 32,
-        16: 64,
-        17: 128,
-        18: 256,
-        19: 512,
-        20: 1024
+
     }
 
     default_headers = {
@@ -64,53 +46,42 @@ class Handler(BaseHandler):
         'retries': 10,
     }
 
-    url = 'http://www.verycd.com/topics/{}'
+    data = {
+        'username': 'wax8280@163.com',
+        'password': '5588612',
+        'save_cookie': '1',
+    }
 
-    @staticmethod
-    def read_last_lines(file_path, start, end):
-        command_ = 'sed -n "{start},{end}p" {file_path}'.format(start=start, end=end, file_path=file_path)
-        fh = subprocess.Popen(command_, stdout=subprocess.PIPE, shell=True)
-        return list(fh.stdout.readlines())
+    url = 'http://www.verycd.com/archives/music/china/{}.html'
 
     def on_start(self):
         self.crawl('http://www.verycd.com/',
-                   callback=self.login,
+                   callback=self.get_cookies,
                    force_update=True,
                    headers=self.default_headers,
                    save={'now': 1}
                    )
 
-    def login(self, response):
-        data = {
-            'username': 'wax8280@163.com',
-            'password': '5588612',
-            'save_cookie': '1',
-        }
+    def get_cookies(self, response):
 
         self.crawl('http://secure.verycd.com/signin',
                    method='POST',
-                   priority=2,
-                   cookies=response.cookies,
-                   data=data,
+                   priority=1,
+                   # cookies=response.cookies,
+                   data=self.data,
                    headers=self.post_headers,
                    allow_redirects=False,
                    force_update=True,
                    save={'now': response.save['now']},
-                   callback=self.get_list,
+                   callback=self.login,
                    )
 
-    def get_list(self, response):
+    def login(self, response):
         if 'ok' not in response.text:
-            data = {
-                'username': 'wax8280@163.com',
-                'password': '5588612',
-                'save_cookie': '1',
-            }
-
             self.crawl('http://secure.verycd.com/signin',
                        method='POST',
                        priority=1,
-                       data=data,
+                       data=self.data,
                        headers=self.post_headers,
                        allow_redirects=False,
                        force_update=True,
@@ -119,36 +90,39 @@ class Handler(BaseHandler):
                        )
             return
 
-        now = response.save['now']
-        l = self.read_last_lines(URL_PATH, now, now + DIVIDE)
+        self.crawl(
+            self.url.format(str(response.save['now']).zfill(5)),
+            priority=2,
+            headers=self.default_headers,
+            allow_redirects=False,
+            force_update=True,
+            cookies=response.cookies,
+            save={'now': response.save['now']},
+            callback=self.get_list,
+        )
 
-        for index, each in enumerate(l):
-            if each.strip():
-                self.crawl(
-                    'http://www.verycd.com/topics/{}/'.format(each.strip()),
-                    cookies=response.cookies,
-                    headers=self.default_headers,
-                    priority=3,
-                    save={'now': now + index},
-                    callback=self.get_content,
-                    allow_redirects=False,
-                )
+    def get_list(self, response):
 
-        data = {
-            'username': 'wax8280@163.com',
-            'password': '5588612',
-            'save_cookie': '1',
-        }
+        for a in response.doc('.archiveResourceList a').items():
+            self.crawl(
+                a.attr.href,
+                callback=self.get_content,
+                headers=self.default_headers,
+                priority=3,
+                allow_redirects=False,
+                cookies=response.cookies,
+            )
 
         self.crawl('http://secure.verycd.com/signin',
                    method='POST',
                    priority=1,
-                   data=data,
+                   # cookies=response.cookies,
+                   data=self.data,
                    headers=self.post_headers,
                    allow_redirects=False,
                    force_update=True,
-                   save={'now': response.save['now'] + DIVIDE},
-                   callback=self.get_list,
+                   save={'now': response.save['now'] + 1},
+                   callback=self.login,
                    )
 
     def get_content(self, response):
@@ -156,7 +130,7 @@ class Handler(BaseHandler):
             self.crawl(
                 'http://www.verycd.com/',
                 headers=self.default_headers,
-                priority=2,
+                priority=4,
                 save={'now': response.save['now']},
                 callback=self.login,
                 force_update=True,

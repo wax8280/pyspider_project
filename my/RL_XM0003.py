@@ -1,5 +1,9 @@
-# !/usr/bin/env python
-# coding: utf-8
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+# Created on 2017-01-10 10:45:59
+# Project: RL_XM0003
+
+
 from pyspider.libs.base_handler import *
 import re
 from copy import deepcopy
@@ -7,6 +11,7 @@ import hashlib
 import json
 
 DIVIDE = 3
+RESULT_PATH = './result/RL_XM0003/result/'
 
 position_list = ["41840", "27594", "41893", "32151", "19517", "31930", "42129", "57150", "17292", "39182", "46370",
                  "43788",
@@ -218,7 +223,7 @@ class Handler(BaseHandler):
         'Accept-Language': 'zh-CN,zh;q=0.8',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
-        'Referer': 'http://www.baidu.com',
+        'Referer': 'http://www.chinahr.com/',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36',
     }
 
@@ -253,7 +258,7 @@ class Handler(BaseHandler):
                            callback=self.list_page,
                            headers=self.default_headers,
                            priority=1,
-                           
+
                            )
             else:
                 if area + 1 < area_length:
@@ -263,7 +268,6 @@ class Handler(BaseHandler):
                                headers=self.default_headers,
                                priority=1,
                                )
-
 
             page = max([int(a.text()) for a in response.doc('.pageList a').items() if a.text().isdigit()])
 
@@ -275,7 +279,6 @@ class Handler(BaseHandler):
                     headers=self.default_headers,
                     priority=1,
                 )
-
 
         for pos in response.doc('.resultList .e1 a').items():
             self.crawl(
@@ -297,7 +300,6 @@ class Handler(BaseHandler):
         if u'中华英才网' not in response.text:
             response.raise_for_status()
         else:
-            return {
-                'content': response.text,
-                'url': response.url,
-            }
+            path = md5string(response.text)
+            with open(RESULT_PATH + str(path), 'wb') as f:
+                f.write(response.text.encode('utf-8'))
