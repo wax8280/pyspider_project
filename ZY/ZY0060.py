@@ -65,8 +65,12 @@ class Handler(BaseHandler):
     START = 0
     DELTA = 5
 
-    baidu_url = 'http://www.baidu.com/s?q1={}&q2=&q3=&q4=%E6%8B%9B%E8%81%98+%E5%A4%A7%E8%A1%97%E7%BD%91+%E8%81%8C%E5%8F%8B%E9%9B%86+%E7%99%BE%E7%A7%91+%E9%A2%86%E8%8B%B1&rn=50&lm=0&ct=0&ft=&q5=&q6=&tn=baiduadv'
-    api_url = 'http://10.26.225.178:10265/api/common/RL_XM0001?start={}&end={}'
+    baidu_url = u'http://www.baidu.com/s?q1={}&q2=&q3=&q4=%E6%8B%9B%E8%81%98+%E5%A4%A7%E8%A1%97%E7%BD%91+%E8%81%8C%E5%8F%8B%E9%9B%86+%E7%99%BE%E7%A7%91+%E9%A2%86%E8%8B%B1&rn=50&lm=0&ct=0&ft=&q5=&q6=&tn=baiduadv'
+
+    # TODO
+    api_url = 'http://120.77.12.100:10265/api/common/RL0087?start={}&end={}'
+
+    # api_url = 'http://10.26.225.178:10265/api/common/RL_XM0001?start={}&end={}'
 
     def get_taskid(self, task):
         return md5string(task['url'] + json.dumps(task['fetch'].get('data', '')))
@@ -100,11 +104,12 @@ class Handler(BaseHandler):
                        )
 
         for name in names:
+            print self.baidu_url.format(name + u'+官网')
             self.crawl(
                 self.baidu_url.format(name + u'+官网'),
                 callback=self.get_baidu,
                 headers=self.baidu_headers,
-                # proxy='localhost:3128',
+                proxy='localhost:3128',
                 save={
                     'request_url': self.baidu_url.format(name),
                     'name': name,
@@ -118,7 +123,7 @@ class Handler(BaseHandler):
         if response.status_code >= 400 or (response.status_code == 200 and len(response.doc('#content_left')) == 0):
             if not ('很抱歉，没有找到' in response.text and response.save['name'] in response.text):
                 self.crawl(request_url,
-                           # proxy='localhost:3128',
+                           proxy='localhost:3128',
                            callback=self.get_baidu,
                            force_update=True,
                            headers=self.baidu_headers,
@@ -147,7 +152,7 @@ class Handler(BaseHandler):
             data=data,
             callback=self.get_icp,
             headers=self.icp_headers,
-            # proxy='localhost:3128',
+            proxy='localhost:3128',
             save=response.save,
         )
 
@@ -156,11 +161,15 @@ class Handler(BaseHandler):
 
         for table in response.doc('.Tool-batchTable').items():
             for tr in table('tr').items():
+
                 url = []
                 name = ''
                 name = tr('td:first').text()
-                
-                co_type=tr('td.tc:first').text()
+
+                co_type = tr('td.tc:first').text()
+
+                if co_type != u'企业':
+                    continue
 
                 for a in tr('a').items():
                     if a.attr.href and 'http' in a.attr.href:
@@ -175,7 +184,7 @@ class Handler(BaseHandler):
                         save={
                             'name': name + ' ' + a,
                         },
-                        # proxy='localhost:3128',
+                        proxy='localhost:3128',
                         headers=self.seo_headers,
                         callback=self.get_seo
                     )
@@ -188,6 +197,11 @@ class Handler(BaseHandler):
                             'name': name + ' ' + a,
                         }
                     )
+
+        return {
+            'content': response.text,
+            'url': response.url,
+        }
 
     @config(priority=8)
     def get_seo(self, response):
@@ -205,7 +219,7 @@ class Handler(BaseHandler):
             save={
                 'name': name
             },
-            # proxy='localhost:3128',
+            proxy='localhost:3128',
             headers=self.seo_headers,
             cookies=response.cookies,
             callback=self.ajax_page
@@ -216,10 +230,22 @@ class Handler(BaseHandler):
             save={
                 'name': name
             },
-            # proxy='localhost:3128',
+            proxy='localhost:3128',
             cookies=response.cookies,
             headers=self.seo_headers,
             callback=self.ajax_page
+        )
+
+        self.crawl(
+            'http://seo.chinaz.com/ajaxseo.aspx?t=alexa&enkey={}&host={}&callback=jQuery111305605408249994359_{}&_={}'.format(
+                dekey, hostd, self.get_time(), self.get_time()),
+            save={
+                'name': name
+            },
+            proxy='localhost:3128',
+            cookies=response.cookies,
+            headers=self.seo_headers,
+            callback=self.ajax_page,
         )
 
         return {
@@ -232,6 +258,7 @@ class Handler(BaseHandler):
         return {
             "content": name + '\n' + response.text,
         }
+
 
     @config(priority=12)
     @catch_status_code_error
