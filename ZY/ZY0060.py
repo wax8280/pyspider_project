@@ -109,7 +109,7 @@ class Handler(BaseHandler):
                 self.baidu_url.format(name + u'+官网'),
                 callback=self.get_baidu,
                 headers=self.baidu_headers,
-                proxy='localhost:3128',
+                # proxy='localhost:3128',
                 save={
                     'request_url': self.baidu_url.format(name),
                     'name': name,
@@ -123,7 +123,7 @@ class Handler(BaseHandler):
         if response.status_code >= 400 or (response.status_code == 200 and len(response.doc('#content_left')) == 0):
             if not ('很抱歉，没有找到' in response.text and response.save['name'] in response.text):
                 self.crawl(request_url,
-                           proxy='localhost:3128',
+                           # # proxy='localhost:3128',
                            callback=self.get_baidu,
                            force_update=True,
                            headers=self.baidu_headers,
@@ -152,7 +152,7 @@ class Handler(BaseHandler):
             data=data,
             callback=self.get_icp,
             headers=self.icp_headers,
-            proxy='localhost:3128',
+            # proxy='localhost:3128',
             save=response.save,
         )
 
@@ -184,7 +184,7 @@ class Handler(BaseHandler):
                         save={
                             'name': name + ' ' + a,
                         },
-                        proxy='localhost:3128',
+                        # proxy='localhost:3128',
                         headers=self.seo_headers,
                         callback=self.get_seo
                     )
@@ -219,7 +219,7 @@ class Handler(BaseHandler):
             save={
                 'name': name
             },
-            proxy='localhost:3128',
+            # proxy='localhost:3128',
             headers=self.seo_headers,
             cookies=response.cookies,
             callback=self.ajax_page
@@ -230,7 +230,7 @@ class Handler(BaseHandler):
             save={
                 'name': name
             },
-            proxy='localhost:3128',
+            # proxy='localhost:3128',
             cookies=response.cookies,
             headers=self.seo_headers,
             callback=self.ajax_page
@@ -242,7 +242,7 @@ class Handler(BaseHandler):
             save={
                 'name': name
             },
-            proxy='localhost:3128',
+            # proxy='localhost:3128',
             cookies=response.cookies,
             headers=self.seo_headers,
             callback=self.ajax_page,
