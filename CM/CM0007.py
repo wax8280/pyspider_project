@@ -43,11 +43,11 @@ class Handler(BaseHandler):
     }
 
     crawl_config = {
-        'itag': 'v1',
+        'itag': 'v2',
         'retries': 5,
     }
 
-    api_url = 'http://10.26.225.178:10265/api/host/domain/endless?type=seo&start_obj_id={}&limit={}'
+    api_url = 'http://10.26.225.178:10265/api/common/CM0007?start={}&end={}'
 
     def get_taskid(self, task):
         return md5string(task['url'] + json.dumps(task['fetch'].get('data', '')))
@@ -57,42 +57,60 @@ class Handler(BaseHandler):
 
     def on_start(self):
         self.crawl(
-            'http://10.26.225.178:10265/api/host/domain/endless?type=seo&limit={}'.format(DIVIDE),
+            'http://10.26.225.178:10265/api/common/CM0007?start={}&end={}'.format(BEGIN, DIVIDE),
             callback=self.get_list,
             force_update=True,
+            save={'cursor': BEGIN + DIVIDE}
         )
 
     @config(priority=2)
     def get_list(self, response):
         ll = response.text.split('\n')
+
+        # ---------------------------------
         l = [i.split(',') for i in ll]
-        obj_id = l[-1][-1]
+        # 以前的
+        if len(l) > len(ll):
+            return
+        # -------------------------------
 
-        if len(ll) >= DIVIDE:
-            print len(ll)
-            self.crawl(self.api_url.format(obj_id, DIVIDE),
-                       callback=self.get_list,
-                       )
+        print ll
+        print len(ll)
+        print len(l)
+        if len(ll) < DIVIDE:
+            time.sleep(5)
+            self.crawl(
+                self.api_url.format(response.save['cursor'] - DIVIDE, response.save['cursor']),
+                callback=self.get_list,
+                save={'cursor': response.save['cursor']}
+            )
+            return
 
-        for i in l:
-            for url in i[1:-1]:
-                # url 中有中文
-                if re.search(u'[\u4e00-\u9fa5]', url):
-                    url = cdtp(url)
+        else:
+            self.crawl(
+                self.api_url.format(response.save['cursor'], response.save['cursor'] + DIVIDE),
+                callback=self.get_list,
+                save={'cursor': response.save['cursor'] + DIVIDE}
+            )
 
-                self.crawl(
-                    'http://seo.chinaz.com/',
-                    params={
-                        'q': url
-                    },
-                    save={
-                        'name': i[0],
-                        'url': url
-                    },
-                    proxy='localhost:3128',
-                    headers=self.seo_headers,
-                    callback=self.get_seo
-                )
+        for url in ll:
+            # url 中有中文
+            if re.search(u'[\u4e00-\u9fa5]', url):
+                url = cdtp(url)
+
+            self.crawl(
+                'http://seo.chinaz.com/',
+                params={
+                    'q': url
+                },
+                save={
+                    'name': i[0],
+                    'url': url
+                },
+                proxy='localhost:3128',
+                headers=self.seo_headers,
+                callback=self.get_seo
+            )
 
     @config(priority=4)
     def get_seo(self, response):
