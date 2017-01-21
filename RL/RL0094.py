@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-# Created on 2017-01-13 14:15:40
-# Project: RL0093
+# Created on 2017-01-13 14:46:22
+# Project: RL0094
 
 from pyspider.libs.base_handler import *
 import re
@@ -9,9 +9,9 @@ import time
 import json
 from copy import deepcopy
 
-BEGIN = 5080000
-END = 6350000
-DIVIDE = 100
+BEGIN = 6350000
+END = 7620000
+DIVIDE = 10
 
 
 def cdtp(source):
@@ -46,11 +46,11 @@ class Handler(BaseHandler):
     }
 
     crawl_config = {
-        'itag': 'v1',
+        'itag': 'v2',
         'retries': 5,
     }
 
-    api_url = 'http://10.26.225.178:10265/api/common/RL0093?start={}&end={}'
+    api_url = 'http://10.26.225.178:10265/api/common/RL0094?start={}&end={}'
 
     def on_start(self):
         self.crawl(
@@ -80,7 +80,7 @@ class Handler(BaseHandler):
         for name in names:
             self.crawl(
                 cdtp(name),
-                callback=self.get_content,
+                callback=self.get_search_list,
                 headers=self.default_headers,
                 proxy='localhost:3128',
                 save={'name': name, 'url': cdtp(name)}
@@ -89,13 +89,23 @@ class Handler(BaseHandler):
     @config(priority=3)
     def get_search_list(self, response):
         if response.save['name'] not in response.text:
-            response.raise_for_status()
+            self.crawl(
+                cdtp(response.save['name']),
+                callback=self.get_content,
+                headers=self.default_headers,
+                proxy='localhost:3128',
+                save={'name': response.save['name'], 'url': cdtp(response.save['name'])}
+            )
+            return
+
+        if u'请确认输入的企业名称是否正确' in response.text:
             return
 
         gen = re.search('id="companyId" value="([\d]+)"', response.text)
         if gen:
             headers = deepcopy(self.get_content_headers)
             headers.update({'Referer': response.save['url']})
+            response.save.update({'headers': headers})
             self.crawl(
                 response.save['url'] + 'companyInfo/basicInformation?companyId={}&companyName={}'.
                 format(gen.group(1), response.save['name']),
@@ -105,13 +115,26 @@ class Handler(BaseHandler):
                 proxy='localhost:3128',
             )
 
+        return {
+            'content': response.save['name'] + '\n' + response.text,
+            'url': response.url
+        }
+
     @config(priority=4)
     def get_content(self, response):
-        if response.save['name'] not in response.text:
-            response.raise_for_status()
+        try:
+            json.loads(response.text)
+        except:
+            self.crawl(
+                response.url,
+                headers=response.save['headers'],
+                callback=self.get_content,
+                save=response.save,
+                proxy='localhost:3128',
+            )
             return
 
         return {
-            'content': response.text,
+            'content': response.save['name'] + '\n' + response.text,
             'url': response.url
         }
