@@ -3,6 +3,7 @@
 # Created on 2017-01-22 11:32:27
 # Project: SR0121
 
+
 from pyspider.libs.base_handler import *
 import re
 import time
@@ -50,100 +51,76 @@ class Handler(BaseHandler):
         'retries': 5,
     }
 
-    api_url = 'http://so.365zhaosheng.com/school.asp?query=&p=&c=&bt=&s=&page={}'
-
     def on_start(self):
         self.crawl(
-            self.api_url.format(1),
-            save={
-                'cursor': 1,
-                'first': True,
-                'max_page': 0,
-            },
-            callback=self.get_list,
+            'http://www.sohojoy.com/',
+            callback=self.get_search_list,
             force_update=True,
             headers=self.default_headers,
-            proxy='localhost:3128',
+            # proxy='localhost:3128',
         )
+
+    def get_search_list(self, response):
+        for a in response.doc('.menunavi.cls h4 a').items():
+            self.crawl(
+                a.attr.href,
+                callback=self.get_list,
+                headers=self.default_headers,
+                # proxy='localhost:3128',
+            )
 
     @config(priority=9)
     @catch_status_code_error
     def get_list(self, response):
         if response.status_code == 200:
-            if response.save['max_page'] == 0:
-                mp = int(max((int(i) for i in re.findall("query=&p=&c=&bt=&s=&page=(\d*)", response.text))))
-            else:
-                mp = response.save['max_page']
-            cursor = response.save['cursor']
-            # 翻页
-            if response.save['first'] and cursor < mp:
-                for j in range(cursor, min(cursor + DIVIDE, mp)):
-                    if j == min(cursor + DIVIDE, mp) - 1:
-                        is_first = True
-                    else:
-                        is_first = False
-                    self.crawl(
-                        self.api_url.format(cursor + j),
-                        save={
-                            'cursor': cursor + j,
-                            'first': is_first,
-                            'max_page': mp
-                        },
-                        callback=self.get_list,
-                        headers=self.default_headers,
-                        proxy='localhost:3128',
-                        retries=20,
-                    )
+            next_url = response.doc('a.next').attr.href if response.doc('a.next').attr.href != 'javascript:;' else None
 
-            # 重试
-            if len(list(response.doc('div.column2 table a.tl').items())) < 1:
+            if next_url:
                 self.crawl(
-                    self.api_url.format(cursor),
-                    save={
-                        'cursor': cursor,
-                        'first': response.save['first'],
-                        'max_page': response.save['max_page']
-                    },
+                    next_url,
+                    callback=self.get_list,
+                    headers=self.default_headers,
+                    # proxy='localhost:3128',
+                )
+            # 重试
+            if len(list(response.doc('ul.prolist.listhover.cls p.ptit a').items())) < 1:
+                self.crawl(
+                    response.url,
                     callback=self.get_list,
                     force_update=True,
                     headers=self.default_headers,
-                    proxy='localhost:3128',
+                    # proxy='localhost:3128',
                 )
 
                 return
 
             headers = deepcopy(self.default_headers)
             headers.update({'Referer': response.url})
-            for a in response.doc('div.column2 table a.tl').items():
+            for a in response.doc('ul.prolist.listhover.cls p.ptit a').items():
                 self.crawl(
                     a.attr.href,
                     callback=self.get_content,
                     save={'headers': headers},
                     headers=headers,
-                    proxy='localhost:3128',
+                    # proxy='localhost:3128',
                 )
         else:
             self.crawl(
-                self.api_url.format(response.save['cursor']),
-                save={
-                    'cursor': response.save['cursor'],
-                    'first': response.save['first'],
-                    'max_page': response.save['max_page']
-                },
+                response.url,
                 callback=self.get_list,
                 force_update=True,
                 headers=self.default_headers,
-                proxy='localhost:3128',
+                # proxy='localhost:3128',
             )
 
     @config(priority=10)
     def get_content(self, response):
-        if u'天天招生' not in response.text:
+        if u'sohojoy' not in response.text:
             self.crawl(
                 response.url,
                 callback=self.get_content,
                 headers=response.save['headers'],
-                proxy='localhost:3128',
+                # proxy='localhost:3128',
             )
             return
 
